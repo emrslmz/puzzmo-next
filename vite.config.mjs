@@ -1,24 +1,25 @@
-import { defineConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
-import vue from '@vitejs/plugin-vue'
-import svgLoader from 'vite-svg-loader'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  plugins: [
-    vue(),
-    svgLoader({
-      defaultImport: 'component',
-    }),
-  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   build: {
+    target: 'es2020',
+    assetsInlineLimit: 0,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
-      external: ['@capacitor-community/tracking-transparency'],
+      output: {
+        manualChunks: {
+          phaser: ['phaser'],
+        },
+      },
     },
   },
-  assetsInclude: ['**/*.svg'],
+  server: {
+    host: true,
+  },
 })

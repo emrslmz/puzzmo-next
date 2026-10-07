@@ -2,29 +2,22 @@ import antfu from '@antfu/eslint-config'
 
 export default antfu({
   ignores: [
-    'src/assets/vendor/**',
     'dist/**',
-    'build/**',
     'node_modules/**',
-    '*.min.js',
-    '*.config.js',
-    '*.config.ts',
-    '*.config.mjs',
     'android/**',
     'ios/**',
-    'capacitor.config.ts',
-    'vite.config.mjs',
-    'vue.config.js',
-    'tailwind.config.js',
-    'postcss.config.cjs',
-    'public/**'
+    'public/**',
+    'assets-src/**',
+    'revenuecat/**',
+    '*.config.*',
   ],
   rules: {
     'no-console': 'off',
-    'vue/no-unused-components': 'off',
     'node/prefer-global/process': 'off',
-    'unused-imports/no-unused-vars': 'warn',
-    'ts/no-use-before-define': 'warn',
-    'vue/require-toggle-inside-transition': 'warn'
-  }
+    // Phaser game objects add themselves to the scene in their constructor.
+    'no-new': 'off',
+    // The unused-imports variant misreports plain JS locals under ESLint 10.
+    'unused-imports/no-unused-vars': 'off',
+    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
+  },
 })

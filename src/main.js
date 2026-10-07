@@ -1,98 +1,130 @@
-import { mobileService } from '@/core/services/MobileService'
-import { soundService } from '@/core/services/SoundService'
-import router from '@/router'
-import { IonicVue } from '@ionic/vue'
+import Phaser from 'phaser'
+import { ads } from '@/core/ads'
+import { bus } from '@/core/bus'
+import { setLanguage } from '@/core/i18n'
+import { iap } from '@/core/iap'
+import { hideSplash, initPlatform } from '@/core/platform'
+import { state } from '@/core/state'
+import { cssSize, renderScale } from '@/core/viewport'
+import { AdventureScene } from '@/scenes/AdventureScene'
+import { EndlessScene } from '@/scenes/EndlessScene'
+import { HomeScene } from '@/scenes/HomeScene'
+import { MapScene } from '@/scenes/MapScene'
+import { OverlayScene } from '@/scenes/OverlayScene'
+import { PreloadScene } from '@/scenes/PreloadScene'
+import { SettingsScene } from '@/scenes/SettingsScene'
+import { ShopScene } from '@/scenes/ShopScene'
+import { StatsScene } from '@/scenes/StatsScene'
+import { StoreScene } from '@/scenes/StoreScene'
 
-import { createPinia } from 'pinia'
-import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
-import { createApp } from 'vue'
-import App from './App.vue'
-import i18n from './i18n'
+async function loadFonts() {
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load('40px "Lilita One"'),
+        document.fonts.load('40px "Luckiest Guy"'),
+      ]),
+      new Promise(resolve => setTimeout(resolve, 2500)),
+    ])
+  }
+  catch {}
+}
 
-// Ionic CSS Imports
-import '@ionic/vue/css/core.css'
-import '@ionic/vue/css/normalize.css'
-import '@ionic/vue/css/structure.css'
-import '@ionic/vue/css/typography.css'
-import '@ionic/vue/css/padding.css'
-import '@ionic/vue/css/float-elements.css'
-import '@ionic/vue/css/text-alignment.css'
-import '@ionic/vue/css/text-transformation.css'
-import '@ionic/vue/css/flex-utils.css'
-import '@ionic/vue/css/display.css'
-import 'animate.css'
+/**
+ * The canvas backing store is sized in device pixels (bounded by a pixel
+ * budget) while its CSS size matches the viewport, so everything renders
+ * crisply on any density without wasting fill-rate.
+ */
+function applyCanvasSize(game) {
+  const rs = renderScale()
+  const { width, height } = cssSize()
+  game.registry.set('renderScale', rs)
+  game.scale.setZoom(1 / rs)
+  game.scale.resize(Math.round(width * rs), Math.round(height * rs))
+  const canvas = game.canvas
+  canvas.style.width = `${width}px`
+  canvas.style.height = `${height}px`
+}
 
-// Custom CSS Imports
-import './style.css'
-import '@/index.css'
-import '@/core/theme/variable.css'
+async function boot() {
+  await Promise.all([state.load(), loadFonts()])
+  setLanguage(state.settings.language)
+  await initPlatform()
 
-// 1. Pinia'yı oluştur
-const pinia = createPinia()
+  const rs = renderScale()
+  const { width, height } = cssSize()
 
-// 2. Kalıcılık (persistence) eklentisini Pinia'ya tanıt
-pinia.use(piniaPluginPersistedstate)
+  const game = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'game',
+    backgroundColor: '#0b1a3a',
+    banner: false,
+    disableContextMenu: true,
+    scale: {
+      mode: Phaser.Scale.NONE,
+      width: Math.round(width * rs),
+      height: Math.round(height * rs),
+      zoom: 1 / rs,
+      autoRound: false,
+      expandParent: false,
+    },
+    render: {
+      antialias: true,
+      powerPreference: 'high-performance',
+      autoMobileTextures: true,
+      // One texture unit per batch on every device. Phaser's multi-texture
+      // shader picks the unit with an exact float compare on an interpolated
+      // varying, which some GPUs (and SwiftShader) get wrong, leaving
+      // wedge-shaped holes in sprites. Our art is atlased, so this is cheap.
+      maxTextures: 1,
+      roundPixels: false,
+    },
+    input: { activePointers: 3 },
+    fps: { target: 60, smoothStep: true },
+    scene: [PreloadScene, HomeScene, MapScene, AdventureScene, EndlessScene, ShopScene, StoreScene, SettingsScene, StatsScene, OverlayScene],
+  })
 
-// 3. Mobil servisleri Pinia örneği ile başlat (bu sayede servisler store'a erişebilir)
-mobileService.boot(pinia)
+  game.registry.set('renderScale', rs)
+  game.events.once(Phaser.Core.Events.READY, () => applyCanvasSize(game))
 
-// Sesleri önceden yükle
-soundService.preload(
-  [
-    { id: 'click_effect_2', path: '/sounds/click_effect_2.mp3' },
-    { id: 'click_effect', path: '/sounds/click_effect.mp3' },
-    { id: 'coin', path: '/sounds/coin.mp3' },
-    { id: 'pop', path: '/sounds/popSound.wav' },
-    { id: 'swipe', path: '/sounds/swipe.mp3' },
-    { id: 'time_is_up', path: '/sounds/time_is_up.mp3' },
-  ],
-  [{ id: 'game_theme1', path: '/sounds/game_theme1.mp3' }],
-)
+  let resizeTimer = null
+  const onResize = () => {
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      applyCanvasSize(game)
+      bus.emit('viewport:resize')
+    }, 100)
+  }
+  window.addEventListener('resize', onResize)
+  window.addEventListener('orientationchange', onResize)
+  bus.on('state:settings', (settings) => {
+    // Graphics quality changes the render scale.
+    if (settings.performanceMode !== game.registry.get('quality')) {
+      game.registry.set('quality', settings.performanceMode)
+      onResize()
+    }
+  })
+  game.registry.set('quality', state.settings.performanceMode)
 
-soundService.setSoundManifest([
-  { id: 'alert', path: '/sounds/alert.wav' },
-  { id: 'click_effect_2', path: '/sounds/click_effect_2.mp3' },
-  { id: 'button_click', path: '/sounds/click_effect_2.mp3' },
-  { id: 'click_effect', path: '/sounds/click_effect.mp3' },
-  { id: 'click_sound', path: '/sounds/click_sound.wav' },
-  { id: 'correct_effect_2', path: '/sounds/correct_effect_2.wav' },
-  { id: 'correct_effect', path: '/sounds/correct_effect.wav' },
-  { id: 'click', path: '/sounds/click.wav' },
-  { id: 'coin', path: '/sounds/coin.mp3' },
-  { id: 'lose', path: '/sounds/lose.mp3' },
-  { id: 'powerup_use', path: '/sounds/powerup_use.mp3' },
-  { id: 'earn_sound', path: '/sounds/earn_sound.mp3' },
-  { id: 'select', path: '/sounds/select.mp3' },
-  { id: 'pop', path: '/sounds/popSound.wav' },
-  { id: 'plop', path: '/sounds/plop.wav' },
-  { id: 'swipe', path: '/sounds/swipe.mp3' },
-  { id: 'time_is_up', path: '/sounds/time_is_up.mp3' },
-  { id: 'win_game', path: '/sounds/win_game.mp3' },
-  { id: 'won_sound', path: '/sounds/won_sound.wav' },
-  { id: 'success', path: '/sounds/success.wav' },
-])
+  // Monetisation SDKs initialise in the background; nothing waits on them.
+  setTimeout(() => {
+    iap.init()
+    ads.init()
+  }, 1500)
 
-soundService.setMusicManifest([
-  { id: 'game_theme1', path: '/sounds/game_theme1.mp3' },
-  { id: 'game_theme2', path: '/sounds/game_theme2.wav' },
-  { id: 'carton_game_song_2', path: '/sounds/carton_game_song_2.wav' },
-])
+  if (import.meta.env.DEV) {
+    window.__game = game
+    window.__state = state
+    window.__setLanguage = setLanguage
+  }
+}
 
-// 4. Vue uygulamasını oluştur ve eklentileri tanıt
-const app = createApp(App)
-  .use(IonicVue, { mode: 'ios', swipeBackEnabled: false })
-  .use(router)
-  .use(pinia) // Pinia'yı Vue uygulamasına tanıt
-  .use(i18n)
-
-// 5. PlayerStore'u initialize et ve storage'dan yükle
-import { usePlayerStore } from '@/store/playerStore.js'
-
-// Router hazır olduğunda uygulamayı mount et
-router.isReady().then(async () => {
-  // PlayerStore'u initialize et
-  const playerStore = usePlayerStore()
-  await playerStore.loadFromStorage()
-  
-  app.mount('#app')
+// Never leave the native splash up if something goes wrong during boot.
+setTimeout(hideSplash, 8000)
+boot().catch((error) => {
+  console.error('[boot]', error)
+  hideSplash()
+  const el = document.getElementById('boot')
+  if (el)
+    el.textContent = 'Something went wrong. Please restart the game.'
 })
