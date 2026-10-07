@@ -126,12 +126,12 @@ void main() {
   // Ice.
   if (uFreeze > 0.001) {
     float lum = dot(col, vec3(0.299, 0.587, 0.114));
-    vec3 ice = mix(vec3(lum), vec3(0.78, 0.92, 1.0), 0.55) + 0.12;
+    vec3 ice = mix(vec3(lum), vec3(0.7, 0.88, 1.0), 0.5) + 0.04;
     vec2 cp = np * 9.0;
     float cracks = abs(sin(cp.x + sin(cp.y * 1.7) * 1.3)) * abs(sin(cp.y * 1.3 + sin(cp.x * 0.9) * 1.6));
-    ice += vec3(0.25) * smoothstep(0.05, 0.0, cracks) * 0.6;
-    ice += vec3(0.35) * smoothstep(0.06, 0.0, depth);
-    col = mix(col, ice, uFreeze);
+    ice += vec3(0.25) * smoothstep(0.05, 0.0, cracks) * 0.5;
+    ice += vec3(0.3) * smoothstep(0.05, 0.0, depth);
+    col = mix(col, ice, uFreeze * 0.85);
   }
 
   // Anti-aliased waterline.
@@ -163,8 +163,9 @@ void main() {
   vec3 col = texture2D(iChannel0, uv).rgb;
   float glitter = pow(max(0.0, n.x * 0.6 + n.y * 0.8), 10.0);
   col += vec3(1.0, 0.98, 0.9) * glitter * 0.55;
-  float waves = sin((np.x + np.y * 0.6) * 30.0 + t * 1.1 + n.x * 3.0) * 0.5 + 0.5;
-  col += vec3(0.6, 0.85, 1.0) * pow(waves, 18.0) * 0.12;
+  // Soft, broken wave crests (normal-map driven so they never read as lines).
+  float crest = smoothstep(0.55, 0.95, n1.x * 0.5 + n2.y * 0.5 + 0.35);
+  col += vec3(0.75, 0.9, 1.0) * crest * 0.06;
   gl_FragColor = vec4(col, 1.0);
 }
 `

@@ -61,7 +61,7 @@ export class MapScene extends BaseScene {
     const title = addText(this, W / 2, this.top + 44, t('adventure_mode'), { size: 44, display: true }).setDepth(20)
     title.setScale(0.6)
     this.tweens.add({ targets: title, scale: 1, duration: 500, ease: 'Back.easeOut' })
-    this.coins = new CoinCounter(this, this.right - 112, this.top + 44, { onPlus: () => this.go('Store') }).setDepth(20)
+    this.coins = new CoinCounter(this, this.right - 112, this.top + 44, { onPlus: () => this.go('Store', { from: 'Map' }) }).setDepth(20)
 
     this.input.on('pointerdown', this.onDown, this)
     this.input.on('pointermove', this.onMove, this)
@@ -72,7 +72,8 @@ export class MapScene extends BaseScene {
 
     // Start focused on the furthest unlocked island.
     const lastUnlocked = ISLANDS.reduce((acc, isl, i) => (state.isIslandUnlocked(isl.id) ? i : acc), 0)
-    const focusX = ROUTE[Math.min(lastUnlocked + 1, ROUTE.length - 1)][0] * this.worldW
+    const next = Math.min(lastUnlocked + 1, ROUTE.length - 1)
+    const focusX = ((ROUTE[lastUnlocked][0] + ROUTE[next][0]) / 2) * this.worldW
     this.scrollX = this.clampScroll(W / 2 - focusX)
     this.world.x = this.scrollX
 
@@ -188,7 +189,7 @@ export class MapScene extends BaseScene {
         color: 'orange',
       })
       if (goStore)
-        this.go('Store')
+        this.go('Store', { from: 'Map' })
       return
     }
     const ok = await this.overlay.confirm({

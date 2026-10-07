@@ -56,6 +56,11 @@ export class PreloadScene extends BaseScene {
 
   onResize() {}
 
+  // Back button does nothing until the game has finished loading.
+  onBack() {
+    return true
+  }
+
   preload() {
     // The logo + backdrop are loaded first so the loading screen has art.
     this.load.setPath('assets/')

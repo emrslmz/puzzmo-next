@@ -329,7 +329,7 @@ export class MemoryGameScene extends BaseScene {
   frostOverlay(on) {
     if (on) {
       this.frost = this.add.image(this.W / 2, this.H / 2, 'fx_vignette').setDisplaySize(this.W * 1.15, this.H * 1.15).setTint(0xBFEFFF).setDepth(700).setAlpha(0)
-      this.tweens.add({ targets: this.frost, alpha: 0.85, duration: 600 })
+      this.tweens.add({ targets: this.frost, alpha: 0.55, duration: 600 })
       this.snow = this.add.particles(0, -10, 'fx_snow', {
         x: { min: 0, max: this.W },
         speedY: { min: 40, max: 110 },

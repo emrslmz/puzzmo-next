@@ -102,7 +102,7 @@ export class HomeScene extends BaseScene {
     const border = 10
     const artH = h * 0.7
     const shadow = this.add.image(0, 14, pillTexture(this, w, h, 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0)')).setDisplaySize(w * 1.02, h * 0.98)
-    const body = rect(this, 0, 0, w - border * 1.2, h - border * 1.2, 0x13306E)
+    const body = rect(this, 0, 0, w - border * 2, h - border * 2, 0x13306E)
     const img = this.add.image(0, 0, art)
     coverCrop(img, 0, -h / 2 + border + artH / 2, w - border * 2, artH, fx, fy)
     const plate = this.add.image(0, h / 2 - border, gradientTexture(this, w, h * 0.5, 'rgba(19,48,110,0)', 'rgba(19,48,110,1)')).setOrigin(0.5, 1).setDisplaySize(w - border * 2, h * 0.5)
